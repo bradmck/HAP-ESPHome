@@ -1,7 +1,7 @@
 from esphome import automation
 import esphome.codegen as cg
 import esphome.config_validation as cv
-from esphome.components import mdns, wifi, light, lock, sensor, switch, climate, pn532, fan
+from esphome.components import mdns, wifi, light, lock, sensor, switch, climate, pn532, fan, binary_sensor
 from esphome.const import PLATFORM_ESP32, CONF_ID, CONF_TRIGGER_ID
 from esphome.core import ID, Lambda
 from esphome.components.esp32 import add_idf_component
@@ -20,8 +20,10 @@ HAPAccessory = homekit_ns.class_('HAPAccessory', cg.Component)
 LightEntity = homekit_ns.class_('LightEntity')
 SensorEntity = homekit_ns.class_('SensorEntity')
 SwitchEntity = homekit_ns.class_('SwitchEntity')
+BinarySensorEntity = homekit_ns.class_('BinarySensorEntity')
 LockEntity = homekit_ns.class_('LockEntity')
 FanEntity = homekit_ns.class_('FanEntity')
+ClimateEntity = homekit_ns.class_('ClimateEntity')
 OnHkSuccessTrigger = homekit_ns.class_(
     "HKAuthTrigger", automation.Trigger.template(cg.std_string, cg.std_string)
 )
@@ -57,6 +59,7 @@ ACCESSORY_INFORMATION = {
 CONFIG_SCHEMA = cv.All(cv.Schema({
     cv.GenerateID() : cv.declare_id(HAPAccessory),
     cv.Optional("light"): cv.ensure_list({cv.Required(CONF_ID): cv.use_id(light.LightState), cv.Optional("meta") : ACCESSORY_INFORMATION}),
+    cv.Optional("binary_sensor"): cv.ensure_list({cv.Required(CONF_ID): cv.use_id(binary_sensor.BinarySensor), cv.Optional("meta") : ACCESSORY_INFORMATION}),
     cv.Optional("lock"):  cv.ensure_list({cv.Required(CONF_ID): cv.use_id(lock.Lock), cv.Optional("nfc_id") : cv.use_id(pn532.PN532),
         cv.Optional("on_hk_success"): automation.validate_automation(
             {
@@ -98,6 +101,14 @@ async def to_code(config):
                 for m in l["meta"]:
                     info_temp.append([ACC_INFO[m], l["meta"][m]])
                 cg.add(sensor_entity.setInfo(info_temp))
+    if 'binary_sensor' in config:
+        for l in config["binary_sensor"]:
+            binary_sensor_entity = cg.Pvariable(ID(f"{l['id'].id}_hk_binary_sensor_entity", type=BinarySensorEntity), var.add_binary_sensor(await cg.get_variable(l['id'])))
+            if "meta" in l:
+                info_temp = []
+                for m in l["meta"]:
+                    info_temp.append([ACC_INFO[m], l["meta"][m]])
+                cg.add(binary_sensor_entity.setInfo(info_temp))
     if 'lock' in config:
         for l in config["lock"]:
             lock_entity = cg.Pvariable(ID(f"{l['id'].id}_hk_lock_entity", type=LockEntity), var.add_lock(await cg.get_variable(l['id'])))

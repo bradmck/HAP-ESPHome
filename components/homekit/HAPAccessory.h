@@ -19,6 +19,9 @@
 #ifdef USE_SENSOR
 #include "sensor.hpp"
 #endif
+#ifdef USE_BINARY_SENSOR
+#include "binary_sensor.hpp"
+#endif
 #ifdef USE_CLIMATE
 #include "climate.hpp"
 #endif
@@ -61,6 +64,10 @@ namespace esphome
       #ifdef USE_SENSOR
       std::vector<SensorEntity*> sensors;
       SensorEntity* add_sensor(sensor::Sensor* sensorPtr, TemperatureUnits units);
+      #endif
+      #ifdef USE_BINARY_SENSOR
+      std::vector<BinarySensorEntity*> binary_sensors;
+      BinarySensorEntity* add_binary_sensor(binary_sensor::BinarySensor* binarySensorPtr);
       #endif
       #ifdef USE_CLIMATE
       std::vector<ClimateEntity*> climates;

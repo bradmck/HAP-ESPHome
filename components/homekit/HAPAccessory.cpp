@@ -37,6 +37,11 @@ namespace esphome
         v->setup();
       }
       #endif
+      #ifdef USE_BINARY_SENSOR
+      for (const auto v : binary_sensors) {
+        v->setup();
+      }
+      #endif
       #ifdef USE_CLIMATE
       for (const auto v : climates) {
         v->setup();
@@ -52,6 +57,9 @@ namespace esphome
       #endif
       #ifdef USE_SENSOR
       ESP_LOGCONFIG(TAG, "Sensor HK Entities: %d", sensors.size());
+      #endif
+      #ifdef USE_BINARY_SENSOR
+      ESP_LOGCONFIG(TAG, "Binary Sensor HK Entities: %d", binary_sensors.size());
       #endif
       #ifdef USE_FAN
       ESP_LOGCONFIG(TAG, "Fan HK Entities: %d", fans.size());
@@ -96,6 +104,12 @@ namespace esphome
     SensorEntity* HAPAccessory::add_sensor(sensor::Sensor* sensorPtr, TemperatureUnits units) {
       sensors.push_back(new SensorEntity(sensorPtr));
       return sensors.back();
+    }
+    #endif
+    #ifdef USE_BINARY_SENSOR
+    BinarySensorEntity* HAPAccessory::add_binary_sensor(binary_sensor::BinarySensor* binarySensorPtr) {
+      binary_sensors.push_back(new BinarySensorEntity(binarySensorPtr));
+      return binary_sensors.back();
     }
     #endif
     #ifdef USE_CLIMATE

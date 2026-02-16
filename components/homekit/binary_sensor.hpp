@@ -20,11 +20,13 @@ namespace esphome
         ESP_LOGD(TAG, "%s state: %d", obj->get_name().c_str(), v);
         hap_acc_t* acc = hap_acc_get_by_aid(hap_get_unique_aid(std::to_string(obj->get_object_id_hash()).c_str()));
         if (acc) {
-          hap_serv_t* hs = hap_acc_get_serv_by_uuid(acc, HAP_SERV_UUID_MOTION_SENSOR);
-          hap_char_t* detected_char = hap_serv_get_char_by_uuid(hs, HAP_CHAR_UUID_DETECTED);
-          hap_val_t state;
-          state.b = v;
-          hap_char_update_val(detected_char, &state);
+          hap_serv_t* hs = hap_acc_get_first_serv(acc);
+          if (hs) {
+            hap_char_t* detected_char = hap_serv_get_first_char(hs);
+            hap_val_t state;
+            state.b = v;
+            hap_char_update_val(detected_char, &state);
+          }
         }
       }
       static int binary_sensor_read(hap_char_t* hc, hap_status_t* status_code, void* serv_priv, void* read_priv) {
@@ -61,7 +63,7 @@ namespace esphome
           service = hap_serv_contact_sensor_create(binarySensorPtr->state);
         }
         else if (std::equal(device_class.begin(), device_class.end(), strdup("garage_door"))) {
-          service = hap_serv_garage_door_opener_create(binarySensorPtr->state, binarySensorPtr->state);
+          service = hap_serv_garage_door_opener_create(binarySensorPtr->state, binarySensorPtr->state, false);
         }
         else if (std::equal(device_class.begin(), device_class.end(), strdup("smoke"))) {
           service = hap_serv_smoke_sensor_create(binarySensorPtr->state);
@@ -86,12 +88,35 @@ namespace esphome
               .cid = HAP_CID_SENSOR,
               .identify_routine = acc_identify,
           };
-          hap_acc_t* acc = hap_acc_create(&acc_cfg);
-          hap_serv_add_char(service, hap_char_name_create(strdup(binarySensorPtr->get_name().c_str())));
-          hap_acc_add_serv(acc, service);
-          this->bridge = hap_get_homekit_bridge();
-          hap_add_acc_to_bridge(this->bridge, acc);
-          binarySensorPtr->add_on_state_callback(on_binary_sensor_update);
+          hap_acc_t* accessory = nullptr;
+          std::string accessory_name = binarySensorPtr->get_name();
+          if (accessory_info[NAME] == NULL) {
+            acc_cfg.name = strdup(accessory_name.c_str());
+          }
+          else {
+            acc_cfg.name = strdup(accessory_info[NAME]);
+          }
+          if (accessory_info[SN] == NULL) {
+            acc_cfg.serial_num = strdup(std::to_string(binarySensorPtr->get_object_id_hash()).c_str());
+          }
+          else {
+            acc_cfg.serial_num = strdup(accessory_info[SN]);
+          }
+          accessory = hap_acc_create(&acc_cfg);
+          ESP_LOGD(TAG, "ID HASH: %lu", binarySensorPtr->get_object_id_hash());
+          hap_serv_set_priv(service, binarySensorPtr);
+
+          /* Set the read callback for the service */
+          hap_serv_set_read_cb(service, binary_sensor_read);
+
+          /* Add the Binary Sensor Service to the Accessory Object */
+          hap_acc_add_serv(accessory, service);
+
+          /* Add the Accessory to the HomeKit Database */
+          hap_add_bridged_accessory(accessory, hap_get_unique_aid(std::to_string(binarySensorPtr->get_object_id_hash()).c_str()));
+          if (!binarySensorPtr->is_internal())
+            binarySensorPtr->add_on_state_callback([this](bool v) { BinarySensorEntity::on_binary_sensor_update(binarySensorPtr, v); });
+          ESP_LOGI(TAG, "Binary Sensor '%s' linked to HomeKit", accessory_name.c_str());
         }
       }
     };
